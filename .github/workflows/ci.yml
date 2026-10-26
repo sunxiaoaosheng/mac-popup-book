@@ -1,0 +1,15 @@
+name: 工程检查
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 工具链
+        run: xcrun swift --version
+      - name: 格式、依赖、测试与打包
+        run: bash scripts/check.sh

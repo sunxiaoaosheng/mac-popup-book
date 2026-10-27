@@ -7,12 +7,24 @@ import SceneKitRendering
     private let paper = PaperGeometry()
     public let scene = SCNScene()
     public let camera = SCNNode()
-    public var stage: SceneStage { SceneStage(scene: scene, camera: camera, anchors: anchorNodes) }
+    public var stage: SceneStage {
+        SceneStage(
+            scene: scene, camera: camera, anchors: anchorNodes, contactSurfaces: contactSurfaces,
+            framingPoints: [
+                SCNVector3(-5.4, -0.2, -3.5), SCNVector3(5.4, -0.2, -3.5),
+                SCNVector3(-5.4, -0.2, 3.5), SCNVector3(5.4, -0.2, 3.5),
+                SCNVector3(3.6, -0.2, 4.0), SCNVector3(-3.6, 3.95, -1.7),
+                SCNVector3(2.15, 4.1, -1.7), SCNVector3(-1.25, 3.45, -2.45),
+                SCNVector3(0.65, 3.5, 0.1),
+            ])
+    }
+    private var contactSurfaces: [ContactSurface] = []
     private var anchorNodes: [AnchorID: SCNNode] = [:]
     public var availableAnchors: Set<AnchorID> { Set(anchorNodes.keys) }
     public let guidance = SceneGuidance(
-        initialCaption: "打开一页，遇见一座森林。", following: "让屏幕带着森林展开；停下来，看看住在这里的小家伙。", manual: "拖动进度，让森林慢慢展开。",
-        closedCaption: "把森林，轻轻收进口袋。")
+        initialCaption: L10n.text("打开一页，遇见一座森林。"), following: L10n.text("让屏幕带着森林展开；停下来，看看住在这里的小家伙。"),
+        manual: L10n.text("拖动进度，让森林慢慢展开。"),
+        closedCaption: L10n.text("把森林，轻轻收进口袋。"))
     public let movementSound: SoundID? = SoundID("paper.fold")
     private var hinges: [(SCNNode, Double, Double)] = []
     private let house = SCNNode()
@@ -71,8 +83,12 @@ import SceneKitRendering
         scene.rootNode.addChildNode(ambient)
         _ = box(200, 0.1, 200, color: 0xE9E3D7, at: SCNVector3(0, -0.35, 0))
         _ = box(10.8, 0.13, 6.9, color: 0x6D7963, at: SCNVector3(0, -0.12, 0))
-        _ = box(5.25, 0.13, 6.55, color: 0xE7DCC0, at: SCNVector3(-2.65, -0.01, 0))
-        _ = box(5.25, 0.13, 6.55, color: 0xF5EDD9, at: SCNVector3(2.65, -0.01, 0))
+        for (x, color) in [(-2.65, 0xE7DCC0), (2.65, 0xF5EDD9)] {
+            let page = box(5.25, 0.13, 6.55, color: color, at: SCNVector3(x, -0.01, 0))
+            contactSurfaces.append(
+                ContactSurface(node: page, plane: .xz, size: CGSize(width: 5.16, height: 6.46), offset: 0.065)
+            )
+        }
         // Fine page edges, a stitched spine, and a fabric bookmark.
         for i in 0..<4 {
             _ = box(
@@ -90,6 +106,10 @@ import SceneKitRendering
                 paper.ellipse(0.45 - Double(i) * 0.015, 0.25), i % 2 == 0 ? 0xD8CCAB : 0xE1D6BA,
                 scene.rootNode, x: 0.65 - Double(i) * 0.18, y: 0.09, z: 0.65 + Double(i) * 0.28)
             n.eulerAngles.x = -.pi / 2
+            contactSurfaces.append(
+                ContactSurface(
+                    node: n, plane: .xy, size: CGSize(width: 0.436 - Double(i) * 0.015, height: 0.236),
+                    offset: n.boundingBox.max.z, footprint: .ellipse))
         }
         let horizon = hinge(x: 0, z: -2.45, start: 0.02, end: 0.60)
         paper.cut(
@@ -127,7 +147,13 @@ import SceneKitRendering
         scene.rootNode.addChildNode(resting)
         peek.position = SCNVector3(-0.65, 1.47, 0.145)
         house.addChildNode(peek)
-        anchorNodes = [.entry: entry, .resting: resting, .peek: peek]
+        let secondary = SCNNode()
+        secondary.position = SCNVector3(-0.35, 0.14, 2.75)
+        scene.rootNode.addChildNode(secondary)
+        anchorNodes = [
+            .entry: entry, .resting: resting, .peek: peek,
+            .secondaryResting: secondary, .invitation: secondary,
+        ]
     }
     private func tree(x: Double, z: Double, height h: Double, color: Int) {
         let n = hinge(x: x, z: z, start: 0.1, end: 0.76)

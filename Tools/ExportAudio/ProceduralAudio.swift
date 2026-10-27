@@ -2,11 +2,11 @@ import Foundation
 import PopupBookCore
 
 enum ProceduralAudio {
-    static func wave(seconds: Double, kind: Int) -> Data {
+    static func wave(seconds: Double, kind: Int, variant: Int = 0) -> Data {
         let rate = 22050
         let count = Int(seconds * Double(rate))
         var samples = Data(capacity: count * 2)
-        var seed: UInt32 = 5489
+        var seed: UInt32 = 5489 + UInt32(variant) * 1777
         var low = 0.0
         var phase = 0.0
         for i in 0..<count {
@@ -19,11 +19,18 @@ enum ProceduralAudio {
             if kind == 0 {
                 value = (noise * 0.3 + low * 0.8) * pow(sin(.pi * u), 2) * 0.45
             } else if kind == 1 {
-                let frequency = 530 + 250 * sin(.pi * u) - 190 * u
+                let frequency = (530 + 250 * sin(.pi * u) - 190 * u) * (1 + Double(variant) * 0.035)
                 phase += 2 * .pi * frequency / Double(rate)
                 value =
                     (sin(phase) + 0.28 * sin(phase * 2) + 0.12 * sin(phase * 3)) * pow(sin(.pi * u), 1.8)
                     * 0.3
+            } else if kind == 3 {
+                // A clearly synthetic purr placeholder, periodic at both ends of the loop.
+                value =
+                    (sin(2 * .pi * 100 * t) + 0.22 * sin(2 * .pi * 200 * t))
+                    * (0.6 + 0.4 * sin(2 * .pi * 25 * t)) * 0.18
+            } else if kind == 4 {
+                value = (low * 0.5 + sin(2 * .pi * 120 * t) * exp(-t * 35)) * pow(sin(.pi * u), 2) * 0.25
             } else {
                 // Loop endpoints fade to silence; one gentle bird-like overtone per cycle.
                 let envelope = pow(sin(.pi * u), 2)

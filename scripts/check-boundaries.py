@@ -12,6 +12,7 @@ EDGES = {
     "MacPlatform": {"PopupBookCore"},
     "SceneKitRendering": {"PopupBookCore"},
     "PaperCatBehavior": {"PopupBookCore"},
+    "VolumeCatRendering": {"PopupBookCore", "SceneKitRendering", "PaperCatBehavior"},
     "PaperCatRendering": {"PopupBookCore", "SceneKitRendering", "PaperCatBehavior"},
     "ForestCabinScene": {"PopupBookCore", "SceneKitRendering"},
     "ForestCabinApp": {"PopupBookCore", "PopupBookRuntime", "MacPlatform", "SceneKitRendering", "PaperCatBehavior", "PaperCatRendering", "ForestCabinScene"},
@@ -45,7 +46,8 @@ resource_root = ROOT / "Apps/ForestCabin/Resources"
 info = plistlib.loads((resource_root / "Info.plist").read_bytes())
 if info.get("CFBundleIdentifier") != "local.ssr.forestbook":
     errors.append("既有应用标识发生变化")
-for name in ["paper.wav", "forest.wav", "meow.wav"]:
+for name in ["paper.wav", "paper-soft.wav", "forest.wav", "meow.wav", "meow-soft.wav", "meow-short.wav",
+             "footstep.wav", "footstep-soft.wav", "purr.wav"]:
     data = (resource_root / "Audio" / name).read_bytes()
     if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
         errors.append("无效音效资源：" + name)

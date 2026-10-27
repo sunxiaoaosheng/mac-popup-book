@@ -7,7 +7,7 @@ final class ForestDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         sender.activate(ignoringOtherApps: true)
-        sender.windows.first(where: { $0.title == "林间小屋" })?.makeKeyAndOrderFront(nil)
+        sender.windows.first(where: { $0.title == L10n.text("林间小屋") })?.makeKeyAndOrderFront(nil)
         return true
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }

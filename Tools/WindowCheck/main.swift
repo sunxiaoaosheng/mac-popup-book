@@ -33,7 +33,11 @@ import SceneKitRendering
     let view = BookSceneView(frame: NSRect(x: 0, y: 0, width: 1120, height: 750))
     view.configure(world.stage)
     view.hits.register(presenter.cat, as: session.character.id)
-    view.onInteraction = { id, event in session.interact(with: id, interaction: event) }
+    var pointerEvents: [CharacterInteraction] = []
+    view.onInteraction = { id, event in
+        pointerEvents.append(event)
+        session.interact(with: id, interaction: event)
+    }
     session.onChange = { view.setPaused(!session.active) }
     var applicationActive = true
     let lifecycle = WindowLifecycle(
@@ -62,6 +66,31 @@ import SceneKitRendering
         let point = view.projectPoint(presenter.cat.convertPosition(SCNVector3(-0.04, 0.84, 0.08), to: nil))
         precondition(view.respond(at: NSPoint(x: point.x, y: point.y)), "实际角色几何命中")
         precondition(session.character.pose.mood == .greeting, "命中后进入回应")
+        // Inject into this view only. These are not global mouse or physical user events.
+        let localPoint = NSPoint(x: point.x, y: point.y)
+        @MainActor func pointer(_ type: NSEvent.EventType, dx: Double, time: Double) -> NSEvent {
+            let location = view.convert(NSPoint(x: localPoint.x + dx, y: localPoint.y), to: nil)
+            return NSEvent.mouseEvent(
+                with: type, location: location, modifierFlags: [], timestamp: time,
+                windowNumber: w.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 0.5)!
+        }
+        pointerEvents.removeAll()
+        view.mouseDown(with: pointer(.leftMouseDown, dx: 0, time: 10))
+        view.mouseUp(with: pointer(.leftMouseUp, dx: 0, time: 10.2))
+        precondition(pointerEvents.filter { $0 == .greet }.count == 1, "短点击只问候一次")
+        precondition(pointerEvents.contains(.contactEnded), "释放结束接触")
+        for event in pointerEvents {
+            if case .contactBegan(let position) = event {
+                precondition((0...1).contains(position.x) && (0...1).contains(position.y), "本地归一化接触点")
+            }
+        }
+        pointerEvents.removeAll()
+        view.mouseDown(with: pointer(.leftMouseDown, dx: 0, time: 11))
+        view.mouseDragged(with: pointer(.leftMouseDragged, dx: 8, time: 11.1))
+        view.mouseUp(with: pointer(.leftMouseUp, dx: 8, time: 11.25))
+        precondition(!pointerEvents.contains(.greet), "拖动释放不能再触发轻点")
+        precondition(pointerEvents.contains(.contactEnded), "拖动释放必须取消接触")
+
         applicationActive = false
         NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: nil)
         precondition(!session.active, "模拟后台暂停")
@@ -85,7 +114,7 @@ import SceneKitRendering
             lifecycle.stop()
             session.stop()
             w.orderOut(nil)
-            print("通过：窗口计时器、角色命中、窗口隔离、模拟最小化及睡眠恢复。非物理合盖或鼠标点击记录。")
+            print("通过：窗口计时器、角色命中、本视图注入点击/拖动互斥、局部接触点、窗口隔离、模拟最小化及睡眠恢复。非物理合盖或真实鼠标记录。")
             app.stop(nil)
             app.postEvent(
                 NSEvent.otherEvent(

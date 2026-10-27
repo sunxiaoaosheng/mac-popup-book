@@ -1,0 +1,8 @@
+"已从备份恢复相处记忆，原存档将在下次有效保存时替换。" = "Memories restored from backup. The original save will be replaced at the next successful save.";
+"已将 %@° 设为展开位置。" = "Open position set to %@°.";
+"正在读取屏幕角度…" = "Reading lid angle…";
+"相处记忆暂时无法读取，原文件已保留。本次仍可相处。" = "Memories could not be read. The original file is safe; you can still spend time together.";
+"相处记忆暂时无法读取，原文件已保留：" = "Memories could not be read. The original file is safe: ";
+"角度暂不可用，画面已保留。可关闭跟随，使用手动预览。" = "Lid angle is unavailable. The scene is held in place. Turn off Follow lid for manual preview.";
+"请先把屏幕打开至 80°～120°，再校准。" = "Open the lid to between 80° and 120° before calibrating.";
+"这次相处还没有保存：" = "This visit has not been saved: ";

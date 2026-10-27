@@ -16,7 +16,7 @@ struct ForestSceneView: NSViewRepresentable {
         model.composition.configure(view)
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.image)
-        view.setAccessibilityLabel("纸雕森林")
+        view.setAccessibilityLabel(L10n.text("纸雕森林"))
         view.appeared = { [weak model] view, window in
             model?.attach(
                 view: BookSceneViewReference(

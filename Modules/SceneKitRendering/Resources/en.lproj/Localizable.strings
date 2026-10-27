@@ -1,0 +1,10 @@
+"动作与模型的目标不匹配：" = "Animation target does not match the model: ";
+"动作与模型的骨骼层级不一致：" = "Animation and model skeletons do not match: ";
+"动作标识为空或重复" = "Animation identifiers must be unique and nonempty";
+"动作资源配置无效：" = "Invalid animation configuration: ";
+"动画输入无效或动作不存在：" = "Invalid animation input or missing animation: ";
+"至少需要一个动作" = "At least one animation is required";
+"节点不属于资源层级" = "The node is outside the asset hierarchy";
+"节点名称缺失或同级名称重复" = "Node names are missing or duplicated among siblings";
+"角色资源缺少有效动作：" = "The character asset is missing a valid animation: ";
+"角色资源缺少骨骼或蒙皮。" = "The character asset is missing a skeleton or skin.";

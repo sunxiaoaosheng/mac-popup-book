@@ -9,87 +9,82 @@ struct ForestBookView: View {
     private let green = Color(nsColor: NSColor(hex: 0x405843))
     var body: some View {
         ZStack {
-            Color(nsColor: NSColor(hex: 0xFBFAEF)).ignoresSafeArea()
-            VStack(spacing: 0) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("一 本 会 呼 吸 的 立 体 书").font(.system(size: 11, weight: .medium)).tracking(2)
-                            .foregroundStyle(green.opacity(0.65))
-                        Text("林间小屋").font(.system(size: 34, weight: .light, design: .serif)).tracking(5)
-                            .foregroundStyle(green)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 7) {
-                        Text("第一章 · 遇见").font(.system(size: 12, weight: .medium)).foregroundStyle(
-                            green.opacity(0.7))
-                        HStack(spacing: 6) {
-                            Circle().fill(model.active ? Color(nsColor: NSColor(hex: 0x9AA576)) : Color.gray)
-                                .frame(width: 5, height: 5)
-                            Text(model.followsLid ? "屏幕 \(model.angleText)" : "手动预览")
-                        }.font(.system(size: 11, design: .monospaced)).foregroundStyle(green.opacity(0.65))
-                    }.padding(.top, 8)
-                }.padding(.horizontal, 42).padding(.top, 32).padding(.bottom, 4)
-                ZStack(alignment: .bottom) {
-                    ForestSceneView(model: model)
-                    VStack(spacing: 7) {
-                        Text(model.caption).font(.system(size: 15, weight: .regular, design: .serif))
-                            .foregroundStyle(green)
-                        Text("轻轻开合，故事就会发生。").font(.system(size: 11)).foregroundStyle(green.opacity(0.55))
-                    }.padding(.bottom, 13).allowsHitTesting(false)
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            ForestSceneView(model: model)
+                .frame(maxWidth: .infinity, maxHeight: .infinity).ignoresSafeArea()
+            VStack {
                 if model.controlsVisible {
-                    VStack(spacing: 13) {
-                        HStack(spacing: 18) {
-                            Label("展开", systemImage: "book.closed").font(.system(size: 12))
-                            Slider(
-                                value: Binding(
-                                    get: { model.followsLid ? model.progress : model.manual },
-                                    set: { model.manual = $0 }), in: 0...1
-                            ).disabled(model.followsLid).tint(green)
-                                .accessibilityLabel("手动展开进度")
-                            Text("\(Int(model.progress*100))%").font(.system(size: 12, design: .monospaced))
-                                .frame(width: 42, alignment: .trailing)
-                            Divider().frame(height: 18)
-                            Toggle("跟随屏幕", isOn: $model.followsLid).toggleStyle(.switch).controlSize(.small)
-                                .font(.system(size: 12))
-                        }
-                        HStack(spacing: 15) {
-                            Text(model.notice).font(.system(size: 11)).foregroundStyle(green.opacity(0.62))
-                                .lineLimit(2)
-                            Spacer(minLength: 4)
-                            Button("校准展开位置") { model.calibrate() }.disabled(
-                                !model.followsLid || model.session.fold.angle == nil
-                            )
-                            .help("在80°至120°范围，将当前屏幕角度设为完全展开")
-                            Button {
-                                model.sound.toggle()
-                            } label: {
-                                Image(systemName: model.sound ? "speaker.wave.2" : "speaker.slash")
-                            }.help(model.sound ? "关闭声音" : "打开声音")
-                                .accessibilityLabel(model.sound ? "关闭声音" : "打开声音")
-                            Button {
-                                (NSApp.keyWindow ?? NSApp.windows.first(where: { $0.title == "林间小屋" }))?
-                                    .toggleFullScreen(nil)
-                            } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            }.help("切换全屏")
-                            Button {
-                                model.controlsVisible = false
-                            } label: {
-                                Image(systemName: "chevron.down")
-                            }.help("收起控制条")
-                        }.buttonStyle(.borderless).font(.system(size: 11))
-                    }.padding(.horizontal, 26).padding(.vertical, 17)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(green.opacity(0.08), lineWidth: 1))
-                        .padding(.horizontal, 30).padding(.bottom, 24).foregroundStyle(green)
+                    HStack(spacing: 12) {
+                        Text(L10n.text("林间小屋")).font(.system(size: 20, weight: .medium, design: .serif))
+                        Text(model.followsLid ? model.angleText : L10n.text("手动预览"))
+                            .font(.system(size: 12, design: .monospaced))
+                        if !model.active { Text(L10n.text("已暂停")).font(.system(size: 12)) }
+                        Spacer()
+                    }
+                    .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 24).padding(.top, 16)
+                }
+                Spacer(minLength: 0)
+                if model.controlsVisible {
+                    Text(model.caption).font(.system(size: 18, weight: .medium, design: .serif))
+                        .padding(.horizontal, 18).padding(.vertical, 9)
+                        .background(.regularMaterial, in: Capsule()).allowsHitTesting(false)
+                    controls.padding(.horizontal, 24).padding(.bottom, 18)
                 } else {
-                    Button("显示控制条") { model.controlsVisible = true }.buttonStyle(.plain).font(
-                        .system(size: 11)
-                    ).foregroundStyle(green.opacity(0.65)).padding(.bottom, 18)
+                    HStack {
+                        Spacer()
+                        Button(L10n.text("显示控制条")) { model.controlsVisible = true }
+                            .buttonStyle(.bordered).padding(8)
+                            .background(.regularMaterial, in: Capsule())
+                    }.padding(18)
                 }
             }
-        }.frame(minWidth: 880, minHeight: 680)
-            .onDisappear { model.stop() }
+        }
+        .foregroundStyle(green).frame(minWidth: 880, minHeight: 680)
+        .onDisappear { model.stop() }
+    }
+    private var controls: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 14) {
+                Button(L10n.text("轻轻摸摸")) { model.gentlyTouch() }
+                    .disabled(!model.active)
+                Button(L10n.text("邀请靠近")) { model.inviteCloser() }
+                    .disabled(!model.active)
+                Text(L10n.text("靠近看它回应，按住缓慢移动来轻抚"))
+                    .font(.system(size: 12)).foregroundStyle(green.opacity(0.8))
+                    .lineLimit(2).frame(maxWidth: 420, alignment: .leading).layoutPriority(-1)
+                Spacer(minLength: 0)
+                Button {
+                    model.sound.toggle()
+                } label: {
+                    Label(
+                        model.sound ? L10n.text("声音已开") : L10n.text("声音已关"),
+                        systemImage: model.sound ? "speaker.wave.2" : "speaker.slash")
+                }.accessibilityLabel(model.sound ? L10n.text("关闭声音") : L10n.text("打开声音"))
+                Button {
+                    model.controlsVisible = false
+                } label: {
+                    Label(L10n.text("收起"), systemImage: "chevron.down")
+                }
+            }.buttonStyle(.bordered).controlSize(.regular)
+            HStack(spacing: 14) {
+                Label(L10n.text("展开"), systemImage: "book.closed").font(.system(size: 12))
+                Slider(
+                    value: Binding(
+                        get: { model.followsLid ? model.progress : model.manual },
+                        set: { model.manual = $0 }), in: 0...1
+                )
+                .disabled(model.followsLid).tint(green).accessibilityLabel(L10n.text("手动展开进度"))
+                Text("\(Int(model.progress * 100))%")
+                    .font(.system(size: 12, design: .monospaced)).frame(width: 42)
+                Toggle(L10n.text("跟随屏幕"), isOn: $model.followsLid).toggleStyle(.switch).controlSize(.small)
+                Button(L10n.text("校准")) { model.calibrate() }
+                    .disabled(!model.followsLid || model.session.fold.angle == nil)
+            }
+            Text(model.notice.isEmpty ? " " : model.notice)
+                .font(.system(size: 12)).lineLimit(2)
+                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .leading)
+                .accessibilityHidden(model.notice.isEmpty)
+        }
+        .padding(16).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
     }
 }

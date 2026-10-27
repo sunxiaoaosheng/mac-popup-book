@@ -7,3 +7,5 @@ logs/
 *.app/
 *.dmg
 *.xcuserstate
+__pycache__/
+*.py[cod]

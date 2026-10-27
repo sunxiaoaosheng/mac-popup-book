@@ -1,0 +1,22 @@
+{
+  "name": "purr.wav",
+  "source": "cat_purrsleepy_loop.wav",
+  "source_sha256": "7f06368e25e6a7aec9b106c3e2915f236b3fa10b41781733ecc8a1866fc749b9",
+  "sha256": "ba420cf7a8e37c58d681500b54fa3299ab967aa0b303a4dc1c42f6f96aedf71a",
+  "gain": 0.21106395693498672,
+  "loop": true,
+  "duration_seconds": 5.233628117913832,
+  "frames": 230803,
+  "sample_rate": 44100,
+  "peak": 0.127410888671875,
+  "rms": 0.03499892024986836,
+  "dc_offset": 3.7948141583406626e-06,
+  "loop_boundary_step": 0.00018310546875,
+  "clipped_samples": 0,
+  "author": "Kerzoven",
+  "license": "CC0-1.0",
+  "source_page": "https://opengameart.org/content/cat-purr-meow",
+  "processing_script": "Tools/AudioPipeline/prepare_cat_audio.py",
+  "highpass_hz": 12,
+  "circular_crossfade_seconds": 0.12
+}

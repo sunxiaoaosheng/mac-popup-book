@@ -1,0 +1,55 @@
+{
+  "title": "Cat Purr & Meow",
+  "author": "Kerzoven",
+  "source_page": "https://opengameart.org/content/cat-purr-meow",
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "checked_at": "2026-10-27",
+  "status": "原始候选录音，未完成最终音色试听，不改变默认应用音效",
+  "files": [
+    {
+      "name": "cat_purrsleepy_loop.wav",
+      "url": "https://opengameart.org/sites/default/files/cat_purrsleepy_loop.wav",
+      "sha256": "7f06368e25e6a7aec9b106c3e2915f236b3fa10b41781733ecc8a1866fc749b9",
+      "bytes": 498694,
+      "channels": 1,
+      "sample_rate": 44100,
+      "sample_width_bytes": 2,
+      "frames": 249325,
+      "duration_seconds": 5.653628117913832
+    },
+    {
+      "name": "cat_mewpurr.wav",
+      "url": "https://opengameart.org/sites/default/files/cat_mewpurr.wav",
+      "sha256": "a58487959ee00c812f9f02ca822a668173bcf04a98c6dd98a902514a1d3994ea",
+      "bytes": 124464,
+      "channels": 1,
+      "sample_rate": 44100,
+      "sample_width_bytes": 2,
+      "frames": 62210,
+      "duration_seconds": 1.4106575963718821
+    },
+    {
+      "name": "cat_mewpurr2.wav",
+      "url": "https://opengameart.org/sites/default/files/cat_mewpurr2.wav",
+      "sha256": "918a896111936f3f6316d1cc7fd64aa1ef0a31a4162dfcbe02c058758b0f2458",
+      "bytes": 213444,
+      "channels": 1,
+      "sample_rate": 44100,
+      "sample_width_bytes": 2,
+      "frames": 106700,
+      "duration_seconds": 2.419501133786848
+    },
+    {
+      "name": "cat_softmew.wav",
+      "url": "https://opengameart.org/sites/default/files/cat_softmew.wav",
+      "sha256": "7de9fed4401b677ccbf072781182857d875093a8e9b5727fc21b38028cfd5a90",
+      "bytes": 218620,
+      "channels": 1,
+      "sample_rate": 44100,
+      "sample_width_bytes": 2,
+      "frames": 109288,
+      "duration_seconds": 2.4781859410430838
+    }
+  ]
+}

@@ -54,6 +54,57 @@ private struct Visitor: BookCharacter {
     func update(in context: WorldContext, events: [CharacterEvent]) { updates += 1 }
 }
 @MainActor final class SessionTests: XCTestCase {
+    func testAcceptedInteractionPresentsBeforeTheNextClockCallback() throws {
+        let clock = Clock()
+        var presentations: [Int] = []
+        let session = try BookSession(
+            character: Visitor(), scene: Scene(), source: Input(), clock: clock,
+            settings: Settings(), audio: Audio()
+        ) { pose, _ in presentations.append(pose) }
+        session.setFollowing(false)
+        session.setActive(true)
+        XCTAssertTrue(session.interact(with: CharacterID("visitor"), interaction: .gentleTouch))
+        XCTAssertEqual(presentations.last, 101)
+        XCTAssertEqual(clock.now, 0)
+        XCTAssertEqual(session.context.clock, 0)
+        XCTAssertEqual(session.caption, "访客")
+    }
+    func testRepeatedInteractionsNeverPublishAnEmptyGuidanceRow() throws {
+        let clock = Clock()
+        let session = try BookSession(
+            character: Visitor(), scene: Scene(), source: Input(), clock: clock,
+            settings: Settings(), audio: Audio()
+        ) { _, _ in }
+        session.setFollowing(false)
+        session.setActive(true)
+        clock.advance(0.1)
+        var notices: [String] = []
+        session.onChange = { notices.append(session.notice) }
+        for interaction in [
+            CharacterInteraction.attention(ContactPoint(x: 0.5, y: 0.5)),
+            .gentleTouch, .invite(.entry),
+        ] {
+            XCTAssertTrue(session.interact(with: CharacterID("visitor"), interaction: interaction))
+            XCTAssertEqual(session.notice, "手动")
+            clock.advance(0.1)
+        }
+        XCTAssertFalse(notices.isEmpty)
+        XCTAssertTrue(notices.allSatisfy { $0 == "手动" })
+    }
+    func testAcceptedInteractionPreservesAudioErrorNotice() throws {
+        let clock = Clock()
+        let audio = Audio()
+        let session = try BookSession(
+            character: Visitor(), scene: Scene(), source: Input(), clock: clock,
+            settings: Settings(), audio: audio
+        ) { _, _ in }
+        session.setFollowing(false)
+        session.setActive(true)
+        audio.lastError = "音频资源不可用"
+        clock.advance(0.1)
+        XCTAssertTrue(session.interact(with: CharacterID("visitor"), interaction: .gentleTouch))
+        XCTAssertEqual(session.notice, "音频资源不可用")
+    }
     func testManualReplacementPauseResumeAndNoHardware() throws {
         let input = Input()
         let clock = Clock()

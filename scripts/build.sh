@@ -10,6 +10,12 @@ cp "$BIN/ForestBook" "$APP/Contents/MacOS/ForestBook"
 cp Apps/ForestCabin/Resources/Info.plist "$APP/Contents/Info.plist"
 cp Apps/ForestCabin/Resources/AppIcon.icns "$APP/Contents/Resources/"
 cp -R Apps/ForestCabin/Resources/Audio "$APP/Contents/Resources/"
+for RESOURCE in "$BIN"/MacPopupBook_*.bundle; do
+    [ -d "$RESOURCE" ] || continue
+    cp -R "$RESOURCE" "$APP/Contents/Resources/"
+done
+cp -R Apps/ForestCabin/Resources/en.lproj Apps/ForestCabin/Resources/zh-Hans.lproj "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 codesign --verify --strict "$APP"
+python3 scripts/write-build-receipt.py
 echo "已构建：$APP"

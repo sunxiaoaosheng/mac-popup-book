@@ -1,0 +1,11 @@
+Cat Purr & Meow（猫的呼噜与轻叫）
+录音作者：Kerzoven
+原始发布页：https://opengameart.org/content/cat-purr-meow
+发布页标注许可：CC0 1.0 Universal
+许可说明：https://creativecommons.org/publicdomain/zero/1.0/
+完整法律文本：https://creativecommons.org/publicdomain/zero/1.0/legalcode
+核对日期：2026-10-27
+
+四份原始WAV均直接取自作者发布页，校验值见Source.json。未经处理的原始文件保留不变。
+Tools/AudioPipeline/prepare_cat_audio.py可生成处理候选，输出与加工参数位于build/audio-candidate。
+保留作者信息以便追溯，不表示作者为本项目背书。

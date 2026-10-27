@@ -13,7 +13,7 @@ import PopupBookRuntime
     @Published var controlsVisible = true
     @Published private(set) var caption: String
     @Published private(set) var progress = 1.0
-    @Published private(set) var angleText = "连接中"
+    @Published private(set) var angleText = L10n.text("连接中")
     @Published private(set) var notice = ""
     @Published private(set) var active = false
     @Published private(set) var renderedFPS = 0
@@ -36,18 +36,31 @@ import PopupBookRuntime
     private func refresh(force: Bool = false) {
         if force || session.active != active { sceneView?.pause(!session.active) }
         let time = session.context.clock
-        guard force || session.active != active || time - lastUIRefresh >= 0.1 || notice != session.notice
+        guard
+            force || session.active != active || time - lastUIRefresh >= 0.1 || notice != session.notice
+                || caption != session.caption
         else { return }
         lastUIRefresh = time
-        active = session.active
-        caption = session.caption
-        progress = session.fold.progress
-        notice = session.notice
-        angleText = session.fold.angle.map { "\(Int($0))°" } ?? "未连接"
+        if active != session.active { active = session.active }
+        if caption != session.caption { caption = session.caption }
+        if progress != session.fold.progress { progress = session.fold.progress }
+        if notice != session.notice { notice = session.notice }
+        let nextAngleText =
+            session.fold.angle.map { L10n.text("铰链 %@°", String(Int($0))) } ?? L10n.text("铰链角度暂不可用")
+        if angleText != nextAngleText { angleText = nextAngleText }
         sceneView?.accessibility(
             active
-                ? "纸雕森林。展开进度 \(Int(progress*100))%。角色状态：\(session.characterAccessibility)。"
-                : "纸雕森林已暂停，等待回到前台。")
+                ? L10n.text(
+                    "纸雕森林。展开进度 %@%。角色状态：%@。", String(Int(progress * 100)), session.characterAccessibility)
+                : L10n.text("纸雕森林已暂停，等待回到前台。"))
+    }
+    func gentlyTouch() {
+        _ = session.interact(with: session.characterID, interaction: .gentleTouch)
+        refresh(force: true)
+    }
+    func inviteCloser() {
+        _ = session.interact(with: session.characterID, interaction: .invite(.invitation))
+        refresh(force: true)
     }
     func calibrate() {
         session.calibrate()

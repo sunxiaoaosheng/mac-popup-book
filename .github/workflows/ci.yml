@@ -1,15 +1,49 @@
-name: 工程检查
+name: 独立场景工程检查
 on:
   push:
   pull_request:
 permissions:
   contents: read
 jobs:
-  check:
+  discover:
+    runs-on: macos-latest
+    outputs:
+      pages: ${{ steps.pages.outputs.pages }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pages
+        name: 发现独立场景
+        run: echo "pages=$(python3 scripts/page.py list --strict)" >> "$GITHUB_OUTPUT"
+  common:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 工具链
-        run: xcrun swift --version
-      - name: 格式、依赖、测试与打包
-        run: bash scripts/check.sh
+      - run: xcrun swift --version
+      - name: 公共契约、格式、边界与语言
+        run: |
+          bash scripts/format.sh --check shared
+          python3 scripts/check-boundaries.py --shared
+          python3 scripts/check-localization.py --shared
+          bash scripts/test.sh
+  scene:
+    needs: discover
+    strategy:
+      fail-fast: false
+      matrix:
+        page: ${{ fromJSON(needs.discover.outputs.pages) }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 单页行为、契约与预览签名打包
+        env:
+          PAGE_ID: ${{ matrix.page }}
+        run: |
+          python3 scripts/page.py check "$PAGE_ID"
+          python3 scripts/page.py build "$PAGE_ID"
+  published-book:
+    needs: common
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 严格构建全部已发布页面
+        run: bash scripts/build.sh

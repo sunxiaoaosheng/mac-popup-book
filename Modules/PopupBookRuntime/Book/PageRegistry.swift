@@ -34,7 +34,7 @@ public enum PageProcessState: Equatable {
     case failed(PageError)
 }
 public enum PageTurnPhase: Equatable { case idle, preparing, collapsing, turning, expanding }
-public struct BookState {
+public struct BookState: Equatable {
     public init() {}
     public var current: String?
     public var target: String?
@@ -54,4 +54,7 @@ public struct BookState {
     func handle(_ input: PageInput)
     func pause()
     func stop()
+    func terminate()
 }
+
+extension PageProcessPort { public func terminate() { stop() } }

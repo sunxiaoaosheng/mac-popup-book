@@ -8,6 +8,7 @@ extension PageProcessConnection: PageProcessPort {}
 
 @MainActor final class HostComposition {
     let clock = DisplayFrameClock()
+    private let supervisor = PageProcessSupervisor()
     let settings: any SettingsStore
     let registry: PageRegistry
     let device = MTLCreateSystemDefaultDevice()
@@ -15,17 +16,15 @@ extension PageProcessConnection: PageProcessPort {}
     let root: URL
     var coordinator: BookCoordinator!
     var processes: [String: PageProcessConnection] = [:]
-    var sounds: [String: BundleAudio] = [:]
-    var stores: [String: FileStateStore] = [:]
+    let audio = PageAudioScopes()
     var stateErrors: [String: String] = [:]
-    private var blocked: Set<String> = []
-    private var loops: [String: Set<String>] = [:]
-    private var saved: [String: Data] = [:]
+    private var pageStates: PageStateRepository?
+    private var position: ReadingPositionStore?
     init() {
         root = Bundle.main.bundleURL
         preview = (Bundle.main.object(forInfoDictionaryKey: "BookPreview") as? Bool) == true
         settings = preview ? PreviewSettings() : UserSettings()
-        let resources = Bundle.main.resourceURL!
+        let resources = Bundle.main.resourceURL ?? root.appendingPathComponent("Contents/Resources")
         let ids =
             ((try? Data(contentsOf: resources.appendingPathComponent("published-pages.json"))).flatMap {
                 try? JSONDecoder().decode(Published.self, from: $0)
@@ -40,18 +39,15 @@ extension PageProcessConnection: PageProcessPort {}
         ) { [weak self] page in
             guard let self, let device = self.device else { return UnavailablePort() }
             let port = PageProcessConnection(
-                service: page.service, device: device,
-                restore: { [weak self] in self?.restore(page.id) ?? (nil, nil) })
+                service: page.service, device: device, supervisor: self.supervisor,
+                expectedPath: self.root.appendingPathComponent(
+                    "Contents/XPCServices/\(page.id).xpc/Contents/MacOS/\(page.product)"
+                ).path,
+                restore: { [weak self] in self?.stateRepository()?.restore(page) ?? (nil, nil) })
             self.processes[page.id] = port
             port.onCheckpoint = { [weak self, weak port] data in
-                guard let self, let port, self.processes[page.id] === port, !self.blocked.contains(page.id),
-                    data != self.saved[page.id]
-                else { return }
-                do {
-                    try self.store(page.id).save(data, previous: self.saved[page.id])
-                    self.saved[page.id] = data
-                    self.stateErrors[page.id] = nil
-                } catch { self.stateErrors[page.id] = error.localizedDescription }
+                guard let self, let port, self.processes[page.id] === port else { return }
+                self.stateRepository()?.save(page, data: data)
             }
             do {
                 let base = self.root.appendingPathComponent(
@@ -61,30 +57,13 @@ extension PageProcessConnection: PageProcessPort {}
                         id: SoundID($0.id), url: base.appendingPathComponent($0.path), volume: $0.volume,
                         loops: $0.loops, autostart: $0.autostart)
                 }
-                self.sounds[page.id] = try BundleAudio(assets: assets)
-            } catch { self.stateErrors[page.id] = error.localizedDescription }
+                self.audio.register(page.id, bank: try BundleAudio(assets: assets))
+            } catch { self.audio.reportFailure(page.id, message: error.localizedDescription) }
             return port
         }
-        coordinator.onScopeActive = { [weak self] id, active in
-            guard let self else { return }
-            self.sounds[id]?.setActive(active)
-            if active { for loop in self.loops[id] ?? [] { self.sounds[id]?.startLoop(SoundID(loop)) } }
-        }
-        coordinator.onSounds = { [weak self] id, events in
-            guard let bank = self?.sounds[id] else { return }
-            for event in events {
-                let sound = SoundID(event.id)
-                switch event.operation {
-                case .play: bank.play(sound)
-                case .begin:
-                    self?.loops[id, default: []].insert(event.id)
-                    bank.startLoop(sound)
-                case .end:
-                    self?.loops[id]?.remove(event.id)
-                    bank.stopLoop(sound, fade: event.fade)
-                }
-            }
-        }
+        coordinator.onScopeEnded = { [weak self] id in self?.audio.remove(id) }
+        coordinator.onScopeActive = { [weak self] id, active in self?.audio.setActive(id, active) }
+        coordinator.onSounds = { [weak self] id, events in self?.audio.consume(id, commands: events) }
         if preview { coordinator.setFollowing(false) }
         coordinator.initialPage = lastPage()
     }
@@ -92,53 +71,60 @@ extension PageProcessConnection: PageProcessPort {}
         let version: Int
         let pages: [String]
     }
-    private func store(_ id: String) throws -> FileStateStore {
-        if let store = stores[id] { return store }
-        let store: FileStateStore
-        if preview {
-            store = FileStateStore(
-                url: FileManager.default.temporaryDirectory.appendingPathComponent(
-                    "popupbook-preview-\(getpid())/\(id).json"))
-        } else if id == "forest-cabin" {
-            store = try FileStateStore.applicationStore()
-        } else {
-            let dir = try FileManager.default.url(
-                for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            store = FileStateStore(
-                url: dir.appendingPathComponent("local.ssr.forestbook/pages/\(id)/state.json"))
-        }
-        stores[id] = store
-        return store
-    }
-    private func restore(_ id: String) -> (Data?, Data?) {
+    private func stateRepository() -> PageStateRepository? {
+        if let pageStates { return pageStates }
         do {
-            let storage = try store(id)
-            return (try storage.load(), try storage.loadBackup())
+            let base: URL
+            if preview {
+                base = FileManager.default.temporaryDirectory.appendingPathComponent(
+                    "popupbook-preview-\(getpid())")
+            } else {
+                base = try FileManager.default.url(
+                    for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+                ).appendingPathComponent("local.ssr.forestbook")
+            }
+            let repository = PageStateRepository(base: base)
+            pageStates = repository
+            return repository
         } catch {
-            blocked.insert(id)
-            stateErrors[id] = error.localizedDescription
-            return (nil, nil)
+            stateErrors["book"] = error.localizedDescription
+            return nil
+        }
+    }
+    func pageError(_ id: String) -> String? {
+        audio.error(for: id) ?? pageStates?.errors[id] ?? stateErrors[id]
+    }
+    func shutdown() {
+        coordinator.stop()
+        let supervisor = self.supervisor
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { supervisor.shutdown() }
+    }
+    private func positionStore() -> ReadingPositionStore? {
+        if let position { return position }
+        guard !preview else { return nil }
+        do {
+            let directory = try FileManager.default.url(
+                for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let store = ReadingPositionStore(
+                store: FileStateStore(url: directory.appendingPathComponent("local.ssr.forestbook/book.json"))
+            )
+            position = store
+            return store
+        } catch {
+            stateErrors["book"] = error.localizedDescription
+            return nil
         }
     }
     func saveLastPage(_ id: String) {
-        guard !preview,
-            let directory = try? FileManager.default.url(
-                for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        else { return }
-        let store = FileStateStore(url: directory.appendingPathComponent("local.ssr.forestbook/book.json"))
-        let data = try? JSONSerialization.data(withJSONObject: ["version": 1, "lastPage": id])
-        if let data { try? store.save(data, previous: nil) }
+        let store = positionStore()
+        store?.save(id)
+        stateErrors["book"] = store?.lastError
     }
     func lastPage() -> String? {
-        guard !preview,
-            let directory = try? FileManager.default.url(
-                for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false),
-            let data = try? Data(
-                contentsOf: directory.appendingPathComponent("local.ssr.forestbook/book.json")),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            json["version"] as? Int == 1
-        else { return nil }
-        return json["lastPage"] as? String
+        let store = positionStore()
+        let id = store?.load()
+        stateErrors["book"] = store?.lastError
+        return id
     }
 }
 @MainActor private final class PreviewSettings: SettingsStore {

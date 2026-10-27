@@ -39,18 +39,15 @@ final class BookDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }
 struct CanvasView: NSViewRepresentable {
-    let model: HostModel
+    @ObservedObject var model: HostModel
     func makeNSView(context: Context) -> SharedCanvas {
         let view = SharedCanvas(composition: model.composition)
         view.onWindow = { [weak model] window in model?.attach(window) }
-        view.onPresented = { [weak model] latency, caption, time in
-            model?.selfCheck?.presented(latency, caption, time)
-        }
-        view.onCapture = { [weak model] texture in model?.selfCheck?.capture(texture) }
+        model.canvas = view
         return view
     }
     func updateNSView(_ view: SharedCanvas, context: Context) {
-        view.isPaused = !model.state.active
+        if view.isPaused == model.state.active { view.isPaused = !model.state.active }
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.image)
         view.setAccessibilityLabel(model.state.output.accessibility)
@@ -64,10 +61,7 @@ struct BookView: View {
     @ObservedObject var model: HostModel
     var body: some View {
         ZStack {
-            CanvasView(model: model).ignoresSafeArea()
-                .rotation3DEffect(
-                    .degrees(model.state.phase == .turning ? model.state.turnProgress * 180 : 0),
-                    axis: (x: 0, y: 1, z: 0), anchor: .leading, perspective: 0.6)
+            CanvasView(model: model).frame(maxWidth: .infinity, maxHeight: .infinity).ignoresSafeArea()
             VStack {
                 if model.controlsVisible {
                     HStack {
@@ -88,6 +82,7 @@ struct BookView: View {
                 if model.failed {
                     VStack(spacing: 12) {
                         Text(L10n.text("此页暂不可用"))
+                        Text(model.failureDetails).font(.caption)
                         Button(L10n.text("重试")) {
                             if let id = model.state.current { model.coordinator.open(id) }
                         }

@@ -23,6 +23,7 @@ private final class Worker: NSObject, PageService {
     var epoch = -1
     var generation = 0
     var paused = false
+    var activity: NSObjectProtocol?
     init(factory: @escaping @MainActor () throws -> any RenderedBookPage) {
         self.factory = factory
         device = MTLCreateSystemDefaultDevice()
@@ -34,12 +35,13 @@ private final class Worker: NSObject, PageService {
         }
         let next = (0..<3).compactMap { _ in
             IOSurface(properties: [
-                .width: width, .height: height, .bytesPerElement: 4, .bytesPerRow: width * 4,
+                .width: width, .height: height, .bytesPerElement: 4,
+                .bytesPerRow: ((width * 4 + 63) / 64) * 64,
                 .pixelFormat: 1_111_970_369,
             ])
         }
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+            pixelFormat: .bgra8Unorm_srgb, width: width, height: height, mipmapped: false)
         descriptor.storageMode = .shared
         descriptor.usage = [.renderTarget, .shaderRead]
         let targets = next.compactMap { device.makeTexture(descriptor: descriptor, iosurface: $0, plane: 0) }
@@ -62,10 +64,23 @@ private final class Worker: NSObject, PageService {
                 try page.prepare(request)
                 self.page = page
                 try self.allocate(request.width, request.height)
-                let result = PagePrepared(epoch: token, pid: getpid())
-                reply(
-                    self.surfaces[0], self.surfaces[1], self.surfaces[2],
-                    (try? JSONEncoder().encode(result)) ?? Data())
+                guard let command = self.queue?.makeCommandBuffer() else { throw PageError.missingResources }
+                try page.render(
+                    into: self.textures[0], command: command,
+                    context: WorldContext(progress: 1, clock: 0, deltaTime: 0, stableDuration: 0))
+                let surfaces = self.surfaces
+                let success = PagePrepared(epoch: token, pid: getpid())
+                let failed = PagePrepared(epoch: token, pid: getpid(), error: .missingResources)
+                command.addCompletedHandler { buffer in
+                    if buffer.status == .completed {
+                        reply(
+                            surfaces[0], surfaces[1], surfaces[2],
+                            (try? JSONEncoder().encode(success)) ?? Data())
+                    } else {
+                        reply(nil, nil, nil, (try? JSONEncoder().encode(failed)) ?? Data())
+                    }
+                }
+                command.commit()
             } catch {
                 let result = PagePrepared(
                     epoch: token, pid: getpid(), error: (error as? PageError) ?? .missingResources,
@@ -98,6 +113,10 @@ private final class Worker: NSObject, PageService {
             }
             do {
                 self.paused = false
+                if self.activity == nil {
+                    self.activity = ProcessInfo.processInfo.beginActivity(
+                        options: .userInitiatedAllowingIdleSystemSleep, reason: "Render active book page")
+                }
                 let output = try page.advance(request.context)
                 try page.render(into: self.textures[request.slot], command: command, context: request.context)
                 let response = PageFrameReply(request: request, output: output)
@@ -130,6 +149,10 @@ private final class Worker: NSObject, PageService {
                 return
             }
             self.paused = true
+            if let activity = self.activity {
+                ProcessInfo.processInfo.endActivity(activity)
+                self.activity = nil
+            }
             reply(self.page?.pause())
         }
     }
@@ -139,11 +162,26 @@ private final class Worker: NSObject, PageService {
                 reply(nil)
                 return
             }
+            if let activity = self.activity {
+                ProcessInfo.processInfo.endActivity(activity)
+                self.activity = nil
+            }
             let saved = self.page?.finish()
             self.page = nil
             self.textures = []
             self.surfaces = []
             reply(saved)
+        }
+    }
+    func disconnected() {
+        DispatchQueue.main.async {
+            if let activity = self.activity {
+                ProcessInfo.processInfo.endActivity(activity)
+                self.activity = nil
+            }
+            self.page = nil
+            self.textures = []
+            self.surfaces = []
         }
     }
     func injectFault(_ mode: Int) {
@@ -159,7 +197,9 @@ private final class WorkerListener: NSObject, NSXPCListenerDelegate {
     init(_ factory: @escaping @MainActor () throws -> any RenderedBookPage) { self.factory = factory }
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
         connection.exportedInterface = pageServiceInterface()
-        connection.exportedObject = Worker(factory: factory)
+        let worker = Worker(factory: factory)
+        connection.exportedObject = worker
+        connection.invalidationHandler = { worker.disconnected() }
         connection.resume()
         return true
     }

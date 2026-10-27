@@ -22,6 +22,8 @@ public struct SharedPageFrame: @unchecked Sendable {
     public var onCheckpoint: ((Data) -> Void)?
     public private(set) var pid: Int32 = 0
     public private(set) var ready = false
+    private let supervisor: PageProcessSupervisor
+    private let expectedPath: String
     private let service: String
     private let device: MTLDevice
     private let restore: () -> (Data?, Data?)
@@ -31,7 +33,9 @@ public struct SharedPageFrame: @unchecked Sendable {
     private var free = Set(0..<3)
     private var textures: [MTLTexture] = []
     private var pending: (Int, Int, Double, String)?
+    private var submittedClock: Double?
     private var sequence = 0
+    private var acceptedSequence = 0
     private var desiredSize = (width: 2880, height: 1920)
     private var currentSize = (width: 2880, height: 1920)
     private var resizing = false
@@ -39,7 +43,12 @@ public struct SharedPageFrame: @unchecked Sendable {
     private var live = false
     private var processPath: String?
     private var checkpoint: Data?
-    public init(service: String, device: MTLDevice, restore: @escaping () -> (Data?, Data?)) {
+    public init(
+        service: String, device: MTLDevice, supervisor: PageProcessSupervisor, expectedPath: String,
+        restore: @escaping () -> (Data?, Data?)
+    ) {
+        self.supervisor = supervisor
+        self.expectedPath = expectedPath
         self.service = service
         self.device = device
         self.restore = restore
@@ -50,6 +59,11 @@ public struct SharedPageFrame: @unchecked Sendable {
         live = true
         ready = false
         currentSize = desiredSize
+        supervisor.whenAvailable(
+            service, wanted: { [weak self] in self?.live == true && self?.epoch == epoch },
+            perform: { [weak self] in self?.connect(epoch: epoch) })
+    }
+    private func connect(epoch: Int) {
         let c = NSXPCConnection(serviceName: service)
         connection = c
         c.remoteObjectInterface = pageServiceInterface()
@@ -92,6 +106,13 @@ public struct SharedPageFrame: @unchecked Sendable {
                 }
                 self.pid = reply.pid
                 self.processPath = self.path(of: reply.pid)
+                guard self.processPath == self.expectedPath else {
+                    self.failed(.invalidMessage)
+                    return
+                }
+                if let identity = self.supervisor.identity(reply.pid, expectedPath: self.expectedPath) {
+                    self.supervisor.register(self.service, identity: identity)
+                }
                 guard self.install(a, b, d) else {
                     self.failed(.missingResources)
                     return
@@ -104,7 +125,8 @@ public struct SharedPageFrame: @unchecked Sendable {
     private func install(_ a: IOSurface?, _ b: IOSurface?, _ d: IOSurface?) -> Bool {
         guard let a, let b, let d else { return false }
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm, width: currentSize.width, height: currentSize.height, mipmapped: false)
+            pixelFormat: .bgra8Unorm_srgb, width: currentSize.width, height: currentSize.height,
+            mipmapped: false)
         descriptor.usage = [.shaderRead, .renderTarget]
         descriptor.storageMode = .shared
         for surface in [a, b, d] {
@@ -120,7 +142,8 @@ public struct SharedPageFrame: @unchecked Sendable {
         return true
     }
     public func setViewport(width: Int, height: Int) {
-        desiredSize = (min(4096, max(1, width)), min(4096, max(1, height)))
+        let factor = min(1, 4096.0 / Double(max(1, max(width, height))))
+        desiredSize = (max(1, Int(Double(width) * factor)), max(1, Int(Double(height) * factor)))
     }
     public func advance(_ context: WorldContext) {
         guard live, ready, !resizing else { return }
@@ -153,6 +176,11 @@ public struct SharedPageFrame: @unchecked Sendable {
                     self.failed(.invalidMessage)
                     return
                 }
+                guard request.sequence > self.acceptedSequence else {
+                    self.free.insert(slot)
+                    return
+                }
+                self.acceptedSequence = request.sequence
                 if let error = frame.error {
                     self.failed(error)
                     return
@@ -224,13 +252,15 @@ public struct SharedPageFrame: @unchecked Sendable {
             }
         }
     }
-    public func stop() {
+    public func stop() { close(terminating: false) }
+    public func terminate() { close(terminating: true) }
+    private func close(terminating: Bool) {
         guard live else { return }
         live = false
         ready = false
         let c = connection
-        let workerPID = pid
-        let expected = processPath
+        let identity = supervisor.identity(c?.processIdentifier ?? pid, expectedPath: expectedPath)
+        if terminating, let identity { supervisor.retire(service, identity: identity) }
         c?.interruptionHandler = nil
         c?.invalidationHandler = nil
         (c?.remoteObjectProxy as? PageService)?.finish(epoch) { [weak self] data in
@@ -243,14 +273,10 @@ public struct SharedPageFrame: @unchecked Sendable {
         pending = nil
         free = []
         connection = nil
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+        let supervisor = self.supervisor
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             c?.invalidate()
-            // Match both the XPC connection PID and the bundled executable path; never kill by process name.
-            if workerPID > 0, let expected, expected.contains("/Contents/XPCServices/"),
-                self.path(of: workerPID) == expected
-            {
-                kill(workerPID, SIGKILL)
-            }
+            if terminating, let identity { supervisor.terminate(identity) }
         }
     }
     /// Only test-only bundled services accept this request.

@@ -111,7 +111,7 @@ import SceneKitRendering
         pointer.viewport = size
         if colorTarget?.width != texture.width || colorTarget?.height != texture.height {
             let color = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .bgra8Unorm, width: texture.width, height: texture.height, mipmapped: false)
+                pixelFormat: .bgra8Unorm_srgb, width: texture.width, height: texture.height, mipmapped: false)
             color.textureType = .type2DMultisample
             color.sampleCount = 4
             color.storageMode = .private

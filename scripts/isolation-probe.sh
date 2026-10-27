@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+if [[ "${1:-}" != "--interactive" ]]; then
+  echo "该历史样件会打开窗口；默认后台验收请运行 bash scripts/integration.sh。"
+  exit 2
+fi
+shift
 swift build --package-path Tools/IsolationProbe -c release
 BIN="$(swift build --package-path Tools/IsolationProbe -c release --show-bin-path)"
 export PROBE_BIN="$BIN" PROBE_ROOT="$PWD"

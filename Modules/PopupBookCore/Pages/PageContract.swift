@@ -16,6 +16,7 @@ public struct PageDescriptor: Codable, Equatable, Sendable {
     public var service: String
     public var product: String
     public var audio: [PageAudioAsset]
+    public var legacyStateFile: String?
     public func title(languages: [String] = Locale.preferredLanguages) -> String {
         let language =
             Bundle.preferredLocalizations(from: ["en", "zh-Hans"], forPreferences: languages).first ?? "en"
@@ -25,6 +26,10 @@ public struct PageDescriptor: Codable, Equatable, Sendable {
         guard !id.isEmpty, id.range(of: "^[a-z][a-z0-9-]{0,63}$", options: .regularExpression) != nil,
             contractVersion == PageContract.version, !service.isEmpty, !product.isEmpty
         else { throw PageError.invalidDescriptor }
+        if let legacyStateFile {
+            guard legacyStateFile.range(of: "^[a-z][a-z0-9-]*\\.json$", options: .regularExpression) != nil
+            else { throw PageError.invalidDescriptor }
+        }
         for asset in audio {
             guard !asset.path.hasPrefix("/"), !asset.path.split(separator: "/").contains(".."),
                 !asset.id.isEmpty, asset.volume.isFinite, (0...1).contains(asset.volume)
@@ -69,7 +74,7 @@ public enum PageInput: Codable, Sendable {
     case action(String)
     case cancel
 }
-public struct PageSound: Codable, Sendable {
+public struct PageSound: Codable, Equatable, Sendable {
     public enum Operation: String, Codable, Sendable { case play, begin, end }
     public var id: String
     public var operation: Operation
@@ -80,7 +85,7 @@ public struct PageSound: Codable, Sendable {
         self.fade = fade
     }
 }
-public struct PagePresentation: Codable, Sendable {
+public struct PagePresentation: Codable, Equatable, Sendable {
     public var caption: String
     public var accessibility: String
     public var actions: [PageAction]

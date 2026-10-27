@@ -12,6 +12,7 @@ import PopupBookCore
     public var onChange: (() -> Void)?
     public var onPageSelected: ((String) -> Void)?
     public var onSounds: ((String, [PageSound]) -> Void)?
+    public var onScopeEnded: ((String) -> Void)?
     public var onScopeActive: ((String, Bool) -> Void)?
     private let source: any AngleSource
     private let clock: any FrameClock
@@ -155,7 +156,10 @@ import PopupBookCore
     }
     public func stop() {
         setActive(false)
-        for port in ports.values { port.stop() }
+        for (id, port) in ports {
+            port.terminate()
+            onScopeEnded?(id)
+        }
         ports = [:]
         started = [:]
         lastFrames = [:]
@@ -181,6 +185,7 @@ import PopupBookCore
     }
     private func select(_ id: String) {
         state.current = id
+        lastFrames[id] = clock.now
         onPageSelected?(id)
         onScopeActive?(id, soundEnabled && state.active && state.phase == .idle)
     }
@@ -191,10 +196,11 @@ import PopupBookCore
     }
     private func fail(_ id: String, _ error: PageError) {
         epochs[id, default: 0] += 1
-        ports[id]?.stop()
+        ports[id]?.terminate()
         ports[id] = nil
         state.pageStates[id] = .failed(error)
         onScopeActive?(id, false)
+        onScopeEnded?(id)
         started[id] = nil
         lastFrames[id] = nil
         if state.target == id {
@@ -237,6 +243,7 @@ import PopupBookCore
                         ports[old]?.stop()
                         ports[old] = nil
                         epochs[old, default: 0] += 1
+                        onScopeEnded?(old)
                         state.pageStates[old] = .stopped
                         started[old] = nil
                         lastFrames[old] = nil

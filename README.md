@@ -1,6 +1,6 @@
 # mac-popup-book
 
-基于MacBook铰链角度的互动立体书。正式应用目前只发布《林间小屋》，采用整书主程序与每页XPC（应用内进程通信服务）独立进程。其余五个主题仍是产品规划，不包含正式新场景。
+基于MacBook铰链角度的互动立体书。正式应用目前只发布《林间小屋》，采用整书主程序与每页XPC（应用内进程通信服务）独立进程。离页即停止业务、释放画面和声音资源，允许空闲服务由系统回收，避免频繁重启限速。其余五个主题仍是产品规划，不包含正式新场景。
 
 需要Apple Silicon、macOS14+及Xcode/Swift工具链；当前本机验证使用Swift6.4、Swift5语言模式。无需屏幕录制、辅助功能或麦克风权限，正常使用不需要Blender。
 
@@ -13,7 +13,7 @@ python3 scripts/page.py list                # 发现本地可开发场景
 python3 scripts/page.py check forest-cabin  # 单页测试，不编译其他页面
 python3 scripts/page.py preview forest-cabin # 手动展开、临时存储的独立预览
 python3 scripts/page.py new pocket-town     # 创建场景模板，不会启用发布
-bash scripts/integration.sh                # 显式本机检查，见脚本及日志的验证范围
+bash scripts/integration.sh                # 无窗口后台进程、故障与离屏渲染检查
 ```
 
 `Modules`管理共享协议、运行、平台、渲染、进程通信与Worker适配；`Apps/BookHost`只负责整书界面和组装；`Scenes/<id>`含场景、角色、素材、测试与独立包；`Book/published-pages.json`由集成者维护。场景分支不修改根包注册。接口与Cursor/Codex协作见[工程契约](docs/engineering/PAGE_CONTRACT.md)和[研发流程](docs/engineering/SCENE_WORKFLOW.md)。
@@ -32,3 +32,5 @@ bash scripts/check-cat-candidate.sh # 可选，需要现有Blender环境
 ```
 
 旧单场景界面代码在`Experiments/LegacyForestApp`作为历史参考，不进入新主程序；原可构建基线可从Git提交b69ce03与a4b40ec恢复。`Tools/IsolationProbe`为跨进程技术样件；正式工程验收使用整书测试配置，不将纯色样件成绩冒充森林场景成绩。
+
+自动调试默认不弹窗、不抢焦点；前台效果与真实开合验收须集中安排。后台验收程序打包在build/后台验收-*.app，仅以无窗口命令行程序运行，不访问用户设置与真实存档。

@@ -30,3 +30,9 @@
 "返回目录" = "Back to contents";
 "没有可用页面，请打开目录查看。 " = "No pages are available. Open contents for details.";
 "关闭" = "Close";
+"页面启动超时" = "The page took too long to start";
+"页面停止响应" = "The page stopped responding";
+"页面版本不兼容" = "The page version is incompatible";
+"页面资源缺失" = "Required page resources are missing";
+"页面返回了无效数据" = "The page returned invalid data";
+"页面进程暂不可用" = "The page process is unavailable";

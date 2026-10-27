@@ -10,6 +10,7 @@ import PopupBookRuntime
     private unowned let model: HostModel
     private var timer: Timer?
     private var captureName: String?
+    private var debugTime = 0.0
     private var stage = 0
     private var since = 0.0
     private var deadline = 0.0
@@ -20,6 +21,7 @@ import PopupBookRuntime
     private var inputTime = 0.0
     private var samples = 0
     private var turns = 0
+    private var turnTarget: String?
     private var pauseProgress = 0.0
     private var ownedPIDs: Set<Int32> = []
     init(model: HostModel) { self.model = model }
@@ -27,6 +29,11 @@ import PopupBookRuntime
         setbuf(stdout, nil)
         since = ProcessInfo.processInfo.systemUptime
         deadline = since + 120
+        // Explicit QA window stays visible while tools return focus; this is not the production lifecycle policy.
+        model.canvas?.window?.level = .floating
+        model.canvas?.window?.collectionBehavior.insert(.canJoinAllSpaces)
+        model.canvas?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         print("开始整书跨进程检查：临时存储、手动角度、程序注入输入与生命周期，非人工开合。")
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.step() }
@@ -56,6 +63,15 @@ import PopupBookRuntime
         check(now < deadline, "整书测试总超时")
         let coordinator = model.coordinator
         let state = coordinator.state
+        if now - debugTime > 2 {
+            debugTime = now
+            print(
+                "阶段：", stage, "切页次数：", turns, "目标：", state.target ?? "无", "启动状态：", state.phase,
+                state.current ?? "无", state.active, state.pageStates, "画面尺寸：",
+                model.canvas?.drawableSize ?? .zero, "暂停：", model.canvas?.isPaused ?? true, "样本：", samples,
+                "期望：", expected ?? "无", "内容：", state.output.caption, "呈现帧：", frames, "应用前台：", NSApp.isActive,
+                "窗口可见：", model.canvas?.window?.occlusionState.contains(.visible) ?? false)
+        }
         if coordinator.registry.pages.count == 1, coordinator.registry.pages.first?.id == "forest-cabin" {
             forestStep(now)
             return
@@ -70,6 +86,9 @@ import PopupBookRuntime
                 print("样页已显示，开始稳定帧率和输入采样。")
             }
         case 1:
+            if expected != nil, now - inputTime > 1 {
+                check(false, "输入未呈现：\(expected ?? "")，当前\(state.output.caption)")
+            }
             if expected == nil, samples < 50 {
                 let value = samples % 2 == 0 ? 0.8 : 0.2
                 samples += 1
@@ -126,14 +145,16 @@ import PopupBookRuntime
             }
         case 7:
             if state.phase == .idle, currentPort?.ready == true, now - since > 0.2 {
+                if let target = turnTarget { check(state.current == target, "切页未到达目标：\(target)") }
                 if turns >= 20 {
                     print("二十次切页与暂停恢复通过。")
-                    coordinator.stop()
+                    model.composition.shutdown()
                     stage = 8
                     since = now
                 } else {
                     let ids = coordinator.registry.pages.map(\.id)
                     let next = ids.first(where: { $0 != state.current })!
+                    turnTarget = next
                     coordinator.open(next)
                     turns += 1
                     since = now
@@ -156,11 +177,16 @@ import PopupBookRuntime
         switch stage {
         case 0:
             if coordinator.state.phase == .idle, now - since > 6 {
+                stage = 12
+                since = now
+                captureName = "open"
+            }
+        case 12:
+            if now - since > 1 {
                 stage = 1
                 since = now
                 frames = 0
                 latencies = []
-                captureName = "open"
             }
         case 1:
             if now - since > 8 {

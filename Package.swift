@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "SceneKitRendering", targets: ["SceneKitRendering"]),
         .library(name: "PageWorkerKit", targets: ["PageWorkerKit"]),
         .executable(name: "ForestBook", targets: ["BookHostApp"]),
+        .executable(name: "BookIntegrationCheck", targets: ["BookIntegrationCheck"]),
     ],
     targets: [
         .target(name: "PopupBookCore", path: "Modules/PopupBookCore", resources: [.process("Resources")]),
@@ -30,6 +31,9 @@ let package = Package(
             name: "BookHostApp",
             dependencies: ["PopupBookCore", "PopupBookRuntime", "MacPlatform", "PageTransport"],
             path: "Apps/BookHost", resources: [.process("Resources")]),
+        .executableTarget(
+            name: "BookIntegrationCheck", dependencies: ["PopupBookCore", "PopupBookRuntime", "MacPlatform"],
+            path: "Tools/BookIntegrationCheck"),
         .testTarget(name: "CoreTests", dependencies: ["PopupBookCore"], path: "Tests/CoreTests"),
         .testTarget(
             name: "RuntimeTests", dependencies: ["PopupBookCore", "PopupBookRuntime"],

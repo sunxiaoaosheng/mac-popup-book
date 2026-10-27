@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-bash scripts/format.sh --check
-python3 scripts/check-boundaries.py
-python3 scripts/check-localization.py
+bash scripts/format.sh --check shared
+python3 scripts/check-boundaries.py --shared
+python3 scripts/check-localization.py --shared
 bash scripts/test.sh
 python3 - <<'PY'
 import json,subprocess

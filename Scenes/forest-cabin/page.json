@@ -72,5 +72,6 @@
       "loops": false,
       "autostart": false
     }
-  ]
+  ],
+  "legacyStateFile": "resident.json"
 }

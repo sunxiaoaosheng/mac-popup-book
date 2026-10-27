@@ -45,6 +45,7 @@ import PopupBookRuntime
     init() {
         coordinator.onChange = { [weak self] in self?.refresh() }
         coordinator.onPageSelected = { [weak self] id in self?.composition.saveLastPage(id) }
+        refresh()
     }
     func attach(_ window: NSWindow) {
         guard lifecycle == nil else { return }
@@ -56,7 +57,9 @@ import PopupBookRuntime
         let next = coordinator.state
         if canvas?.isPaused == next.active { canvas?.isPaused = !next.active }
         guard
-            next.phase == .turning || now - lastRefresh >= 0.1 || next.phase != state.phase
+            next.following != state.following || next.soundEnabled != state.soundEnabled
+                || next.manualProgress != state.manualProgress || next.openAngle != state.openAngle
+                || next.phase == .turning || now - lastRefresh >= 0.1 || next.phase != state.phase
                 || next.current != state.current
                 || next.output.caption != state.output.caption || next.pageStates != state.pageStates
                 || next.active != state.active

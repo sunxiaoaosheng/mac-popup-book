@@ -30,7 +30,7 @@ let package = Package(
         .executableTarget(
             name: "BookHostApp",
             dependencies: ["PopupBookCore", "PopupBookRuntime", "MacPlatform", "PageTransport"],
-            path: "Apps/BookHost", resources: [.process("Resources")]),
+            path: "Apps/BookHost", exclude: ["Packaging"], resources: [.process("Resources")]),
         .executableTarget(
             name: "BookIntegrationCheck", dependencies: ["PopupBookCore", "PopupBookRuntime", "MacPlatform"],
             path: "Tools/BookIntegrationCheck"),

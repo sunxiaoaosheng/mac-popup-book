@@ -64,6 +64,15 @@ import PopupBookCore
     override func mouseMoved(with event: NSEvent) { route(.move, event) }
     override func mouseExited(with event: NSEvent) { composition?.coordinator.handle(.cancel) }
     override func cancelOperation(_ sender: Any?) { composition?.coordinator.handle(.cancel) }
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 123 {
+            composition?.coordinator.move(-1)
+        } else if event.keyCode == 124 {
+            composition?.coordinator.move(1)
+        } else {
+            super.keyDown(with: event)
+        }
+    }
     override func swipe(with event: NSEvent) {
         if event.deltaX > 0 {
             composition?.coordinator.move(-1)

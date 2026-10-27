@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Validate package edges and page isolation; never open hardware or user state."""
-import json, pathlib, re, subprocess, argparse
+import json, pathlib, re, subprocess, argparse, plistlib
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--page')
@@ -31,4 +31,6 @@ for source in scene_sources:
     assert not re.search('^import (?:MacPlatform|IOKit|AVFoundation|SwiftUI)\\b', text, re.M), f'场景绕过平台边界：{source}'
     assert not re.search('(?:IOHID|UserDefaults.standard|FileStateStore|SystemFrameClock)', text), f'场景直接访问设备、设置或存储：{source}'
     assert 'fatalError(' not in text and 'try!' not in text, f'场景必须报告错误：{source}'
+info=plistlib.loads((ROOT/'Apps/BookHost/Packaging/Info.plist').read_bytes())
+assert info.get('CFBundleIdentifier')=='local.ssr.forestbook','既有应用标识不允许变化'
 print('公共模块依赖与独立场景副作用边界检查通过。')

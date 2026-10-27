@@ -32,7 +32,7 @@ def build(args):
     resources = contents / 'Resources'
     resources.mkdir()
     shutil.copy2(bin / host_product, contents / 'MacOS' / host_product)
-    info = plistlib.loads((ROOT / 'Apps/ForestCabin/Resources/Info.plist').read_bytes())
+    info = plistlib.loads((ROOT / 'Apps/BookHost/Packaging/Info.plist').read_bytes())
     if args.preview:
         info['CFBundleIdentifier'] = 'local.ssr.popupbook.preview.' + (ids[0] if len(ids) == 1 else 'integration')
     info['BookPreview'] = args.preview
@@ -40,14 +40,12 @@ def build(args):
     if args.background_check:
         info['CFBundleIdentifier'] += '.background-check'
         info['LSBackgroundOnly'] = True
-    info['CFBundleShortVersionString'] = '0.2.0'
-    info['CFBundleVersion'] = '3'
     (contents / 'Info.plist').write_bytes(plistlib.dumps(info))
     for path in bin.glob('*.bundle'):
         shutil.copytree(path, resources / path.name)
-    shutil.copy2(ROOT / 'Apps/ForestCabin/Resources/AppIcon.icns', resources / 'AppIcon.icns')
+    shutil.copy2(ROOT / 'Apps/BookHost/Packaging/AppIcon.icns', resources / 'AppIcon.icns')
     for lang in ['en', 'zh-Hans']:
-        shutil.copytree(ROOT / f'Apps/ForestCabin/Resources/{lang}.lproj', resources / f'{lang}.lproj')
+        shutil.copytree(ROOT / f'Apps/BookHost/Packaging/{lang}.lproj', resources / f'{lang}.lproj')
     (resources / 'Pages').mkdir()
     (resources / 'published-pages.json').write_text(json.dumps({'version': 1, 'pages': ids}))
     for (package, page, worker_bin) in descriptors:

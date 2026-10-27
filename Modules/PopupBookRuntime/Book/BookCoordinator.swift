@@ -6,8 +6,8 @@ import PopupBookCore
     public let registry: PageRegistry
     public private(set) var state = BookState()
     public private(set) var fold = FoldState()
-    public private(set) var following = true
-    public private(set) var soundEnabled: Bool
+    public var following: Bool { state.following }
+    public var soundEnabled: Bool { state.soundEnabled }
     public var initialPage: String?
     public var onChange: (() -> Void)?
     public var onPageSelected: ((String) -> Void)?
@@ -26,7 +26,7 @@ import PopupBookCore
     private var lastTick = 0.0
     private var phaseTime = 0.0
     private var context = WorldContext(progress: 1, clock: 0, deltaTime: 0, stableDuration: 0)
-    private var manual = 1.0
+    private var manual: Double { state.manualProgress }
     private var inputGeneration = 0
     private var lastReading = 0.0
     private var inputTimestamp = 0.0
@@ -40,8 +40,9 @@ import PopupBookCore
         self.settings = settings
         self.wallClock = wallClock
         self.factory = factory
-        soundEnabled = settings.soundEnabled
+        state.soundEnabled = settings.soundEnabled
         _ = fold.calibrate(settings.openAngle)
+        state.openAngle = fold.openAngle
     }
     public func setActive(_ value: Bool) {
         guard value != state.active else { return }
@@ -77,18 +78,18 @@ import PopupBookCore
         onChange?()
     }
     public func setFollowing(_ value: Bool) {
-        following = value
+        state.following = value
         configureInput()
         onChange?()
     }
     public func setManual(_ value: Double) {
         guard value.isFinite else { return }
-        manual = clamp(value)
+        state.manualProgress = clamp(value)
         if !following { fold.target = manual }
         onChange?()
     }
     public func setSound(_ value: Bool) {
-        soundEnabled = value
+        state.soundEnabled = value
         settings.soundEnabled = value
         if let id = state.current { onScopeActive?(id, value && state.active && state.phase == .idle) }
         onChange?()
@@ -96,6 +97,7 @@ import PopupBookCore
     @discardableResult public func calibrate() -> Bool {
         guard let angle = fold.angle, fold.calibrate(angle) else { return false }
         settings.openAngle = fold.openAngle
+        state.openAngle = fold.openAngle
         onChange?()
         return true
     }
@@ -216,11 +218,13 @@ import PopupBookCore
         let dt = clamp(time - lastTick, 0, 0.05)
         lastTick = time
         if following, time - lastReading > 1 {
+            fold.receive(AngleSample(angle: nil, timestamp: inputTimestamp))
             fold.receive(AngleSample(angle: nil, timestamp: inputTimestamp + time - lastReading))
         }
         context = fold.advance(dt)
         context.wallDate = wallClock?.date
         state.progress = context.progress
+        state.angle = fold.angle
         for (id, _) in ports {
             if state.pageStates[id] == .starting, time - (started[id] ?? time) > 10 {
                 fail(id, .startupTimeout)

@@ -41,6 +41,11 @@ public struct BookState: Equatable {
     public var phase: PageTurnPhase = .idle
     public var progress = 1.0
     public var active = false
+    public var following = true
+    public var soundEnabled = false
+    public var manualProgress = 1.0
+    public var openAngle = 105.0
+    public var angle: Double?
     public var pageStates: [String: PageProcessState] = [:]
     public var output = PagePresentation()
     public var turnProgress = 0.0

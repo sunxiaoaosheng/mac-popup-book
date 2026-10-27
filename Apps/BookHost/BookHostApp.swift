@@ -8,7 +8,7 @@ import SwiftUI
     @NSApplicationDelegateAdaptor(BookDelegate.self) var delegate
     var body: some Scene {
         Window(L10n.text("林间小屋"), id: "book") {
-            BookView(model: model).onDisappear { model.stop() }
+            BookView(model: model).onAppear { delegate.model = model }.onDisappear { model.stop() }
         }.defaultSize(width: 1440, height: 960).windowStyle(.hiddenTitleBar).commands {
             CommandMenu(L10n.text("互动")) {
                 ForEach(model.state.output.actions, id: \.id) { action in
@@ -22,19 +22,26 @@ import SwiftUI
                 }
             }
             CommandMenu(L10n.text("目录")) {
-                Button(L10n.text("上一页")) { model.coordinator.move(-1) }.keyboardShortcut(
-                    .leftArrow, modifiers: [])
-                Button(L10n.text("下一页")) { model.coordinator.move(1) }.keyboardShortcut(
-                    .rightArrow, modifiers: [])
+                Button(L10n.text("上一页")) { model.coordinator.move(-1) }
+                Button(L10n.text("下一页")) { model.coordinator.move(1) }
                 Button(L10n.text("目录")) { model.directory = true }
             }
         }
     }
 }
-final class BookDelegate: NSObject, NSApplicationDelegate {
+@MainActor final class BookDelegate: NSObject, NSApplicationDelegate {
+    weak var model: HostModel?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let model else { return .terminateNow }
+        model.stop()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }
@@ -127,7 +134,9 @@ struct BookView: View {
             HStack {
                 Text(L10n.text("展开"))
                 Slider(
-                    value: Binding(get: { model.state.progress }, set: { model.coordinator.setManual($0) }),
+                    value: Binding(
+                        get: { model.state.following ? model.state.progress : model.state.manualProgress },
+                        set: { model.coordinator.setManual($0) }),
                     in: 0...1
                 ).disabled(model.coordinator.following)
                 Text("\(Int(model.state.progress*100))%").monospacedDigit().frame(width: 48)

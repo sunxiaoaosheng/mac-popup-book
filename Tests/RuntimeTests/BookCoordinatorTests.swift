@@ -51,6 +51,43 @@ private func descriptor(_ id: String, version: Int = 1) -> Data {
     ])
 }
 @MainActor final class BookCoordinatorTests: XCTestCase {
+    func testControlIntentsAreObservableWithoutAnyClockOrPage() {
+        let coordinator = BookCoordinator(
+            registry: PageRegistry(descriptors: [], published: []), source: TestAngle(), clock: TestDisplay(),
+            settings: TestPreferences()
+        ) { _ in TestPort() }
+        var observed: [BookState] = []
+        coordinator.onChange = { observed.append(coordinator.state) }
+        coordinator.setFollowing(false)
+        coordinator.setManual(0.4)
+        coordinator.setSound(true)
+        XCTAssertEqual(observed.count, 3)
+        XCTAssertFalse(observed.last!.following)
+        XCTAssertEqual(observed.last!.manualProgress, 0.4)
+        XCTAssertTrue(observed.last!.soundEnabled)
+    }
+    func testMissingSensorForOneSecondHoldsPictureAndCanRecover() {
+        let clock = TestDisplay()
+        let input = TestAngle()
+        let port = TestPort()
+        let coordinator = BookCoordinator(
+            registry: PageRegistry(descriptors: [descriptor("red")], published: ["red"]), source: input,
+            clock: clock, settings: TestPreferences()
+        ) { _ in port }
+        coordinator.setActive(true)
+        input.callbacks[0](AngleSample(angle: 90, timestamp: clock.now))
+        port.onReady?()
+        clock.step(0.5)
+        let target = coordinator.fold.target
+        clock.step(0.7)
+        XCTAssertFalse(coordinator.fold.sensorAvailable)
+        XCTAssertNil(coordinator.fold.angle)
+        XCTAssertEqual(coordinator.fold.target, target)
+        input.callbacks[0](AngleSample(angle: 100, timestamp: clock.now))
+        clock.step(0.1)
+        XCTAssertTrue(coordinator.fold.sensorAvailable)
+        XCTAssertEqual(coordinator.state.angle, 100)
+    }
     func testRegistryQuarantinesBadAndDuplicateEntries() {
         let registry = PageRegistry(
             descriptors: [

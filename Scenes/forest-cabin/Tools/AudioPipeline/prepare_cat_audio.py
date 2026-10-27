@@ -14,7 +14,7 @@ import sys
 import wave
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SOURCE = ROOT / 'Characters/PaperCat/Assets/AudioSources/Kerzoven'
+SOURCE = ROOT / 'Assets/AudioSources/Kerzoven'
 
 
 def read_pcm(path):

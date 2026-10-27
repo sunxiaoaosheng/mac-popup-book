@@ -1,0 +1,6 @@
+---
+description: 本仓库统一工程约束与独立场景研发入口
+alwaysApply: true
+---
+遵循根目录 AGENTS.md，以及 docs/engineering/PAGE_CONTRACT.md 和 docs/engineering/SCENE_WORKFLOW.md。
+仅在当前任务授权范围修改文件；使用独立分支与工作目录；共享脚本和契约是唯一标准，不维护Cursor专属实现或另一套测试。

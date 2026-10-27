@@ -30,7 +30,7 @@ public struct AngleSample: Sendable {
         self.timestamp = timestamp
     }
 }
-public struct WorldContext: Sendable {
+public struct WorldContext: Sendable, Codable {
     public var progress: Double
     public var clock: Double
     public var deltaTime: Double

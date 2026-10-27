@@ -15,13 +15,13 @@ SPEC.loader.exec_module(AUDIO)
 class AudioPreparationTests(unittest.TestCase):
     def test_runtime_purr_is_reproducible_from_real_recording(self):
         root = SCRIPT.parents[2]
-        source = root / 'Characters/PaperCat/Assets/AudioSources/Kerzoven/cat_purrsleepy_loop.wav'
+        source = root / 'Assets/AudioSources/Kerzoven/cat_purrsleepy_loop.wav'
         raw, rate = AUDIO.read_pcm(source)
         prepared, _ = AUDIO.prepare(raw, rate, True)
         with tempfile.TemporaryDirectory() as directory:
             generated = pathlib.Path(directory) / 'purr.wav'
             AUDIO.write_pcm(generated, prepared, rate)
-            runtime = root / 'Apps/ForestCabin/Resources/Audio/purr.wav'
+            runtime = root / 'Resources/Audio/purr.wav'
             self.assertEqual(generated.read_bytes(), runtime.read_bytes(), '不能重新混入合成震动声')
         provenance = json.loads((runtime.parent / 'purr-source.json').read_text())
         self.assertEqual(provenance['source_sha256'], hashlib.sha256(source.read_bytes()).hexdigest())

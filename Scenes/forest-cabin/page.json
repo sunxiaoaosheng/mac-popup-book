@@ -1,0 +1,77 @@
+{
+  "id": "forest-cabin",
+  "order": 0,
+  "names": {
+    "zh-Hans": "林间小屋",
+    "en": "Forest Cabin"
+  },
+  "contractVersion": 1,
+  "service": "local.ssr.forestbook.page.forest-cabin",
+  "product": "ForestCabinWorker",
+  "audio": [
+    {
+      "id": "paper.fold",
+      "path": "Audio/paper.wav",
+      "volume": 0.12,
+      "loops": false,
+      "autostart": false
+    },
+    {
+      "id": "paper.fold",
+      "path": "Audio/paper-soft.wav",
+      "volume": 0.12,
+      "loops": false,
+      "autostart": false
+    },
+    {
+      "id": "forest.ambience",
+      "path": "Audio/forest.wav",
+      "volume": 0.045,
+      "loops": true,
+      "autostart": true
+    },
+    {
+      "id": "paper-cat.purr",
+      "path": "Audio/purr.wav",
+      "volume": 0.55,
+      "loops": true,
+      "autostart": false
+    },
+    {
+      "id": "paper-cat.greeting",
+      "path": "Audio/meow.wav",
+      "volume": 0.15,
+      "loops": false,
+      "autostart": false
+    },
+    {
+      "id": "paper-cat.greeting",
+      "path": "Audio/meow-soft.wav",
+      "volume": 0.15,
+      "loops": false,
+      "autostart": false
+    },
+    {
+      "id": "paper-cat.greeting",
+      "path": "Audio/meow-short.wav",
+      "volume": 0.15,
+      "loops": false,
+      "autostart": false
+    },
+    {
+      "id": "paper-cat.footstep",
+      "path": "Audio/footstep.wav",
+      "volume": 0.1,
+      "loops": false,
+      "autostart": false
+    },
+    {
+      "id": "paper-cat.footstep",
+      "path": "Audio/footstep-soft.wav",
+      "volume": 0.1,
+      "loops": false,
+      "autostart": false
+    }
+  ],
+  "legacyStateFile": "resident.json"
+}

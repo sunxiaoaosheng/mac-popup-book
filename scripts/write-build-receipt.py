@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import pathlib
+import os
 import plistlib
 import subprocess
 
@@ -17,9 +18,10 @@ def digest(path):
 
 def main():
     sources = []
-    for folder in ['Modules', 'Characters', 'Apps', 'Tests', 'Tools', 'scripts', '.github']:
-        sources += [path for path in (ROOT / folder).rglob('*')
-                    if path.is_file() and '__pycache__' not in path.parts and path.name != '.DS_Store']
+    for folder in ['Modules', 'Apps', 'Scenes', 'Templates', 'Book', 'Experiments', 'Tests', 'Tools', 'scripts', '.github', '.cursor']:
+        for directory, names, files in os.walk(ROOT / folder):
+            names[:] = [name for name in names if name not in {'.build', '.git', '.swiftpm', '__pycache__', 'build', 'artifacts', 'logs'}]
+            sources += [pathlib.Path(directory) / name for name in files if name != '.DS_Store']
     sources += [ROOT / name for name in ['Package.swift', 'README.md', 'AGENTS.md', '.swift-format', '.gitignore']
                 if (ROOT / name).is_file()]
     manifest = {}

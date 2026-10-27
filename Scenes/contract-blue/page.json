@@ -1,0 +1,13 @@
+{
+  "id": "contract-blue",
+  "order": 0,
+  "names": {
+    "zh-Hans": "契约样页·蓝",
+    "en": "contract-blue"
+  },
+  "contractVersion": 1,
+  "service": "local.ssr.forestbook.page.contract-blue",
+  "product": "StandaloneWorker",
+  "audio": [],
+  "testOnly": true
+}

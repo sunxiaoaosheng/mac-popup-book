@@ -14,13 +14,13 @@ on_error() {
     exit "$status"
 }
 trap on_error ERR
-bash scripts/blender.sh --background --factory-startup --disable-autoexec --python-exit-code 1 --python "$ROOT/Tools/AssetPipeline/cat_candidate.py" -- "$ASSET_WORK"
-bash scripts/blender.sh --background --factory-startup --disable-autoexec "$ASSET_WORK/ForestCatCandidate.blend" --python-exit-code 1 --python "$ROOT/Tools/AssetPipeline/verify_cat_source.py" -- "$ASSET_WORK"
+bash scripts/blender.sh --background --factory-startup --disable-autoexec --python-exit-code 1 --python "$ROOT/Experiments/VolumeCat/Tools/AssetPipeline/cat_candidate.py" -- "$ASSET_WORK"
+bash scripts/blender.sh --background --factory-startup --disable-autoexec "$ASSET_WORK/ForestCatCandidate.blend" --python-exit-code 1 --python "$ROOT/Experiments/VolumeCat/Tools/AssetPipeline/verify_cat_source.py" -- "$ASSET_WORK"
 for task_clip in CatIdle CatWalk CatSit CatTurn; do
-    swift run AssetCheck "$ASSET_WORK/$task_clip.usdz" "$ASSET_WORK/scenekit-$task_clip" > "$ASSET_WORK/$task_clip-import.log" 2>&1
+    swift run --package-path "$ROOT/Experiments/VolumeCat" AssetCheck "$ASSET_WORK/$task_clip.usdz" "$ASSET_WORK/scenekit-$task_clip" > "$ASSET_WORK/$task_clip-import.log" 2>&1
 done
 swift run PlaybackCheck "$ASSET_WORK" > "$ASSET_WORK/playback-check.log" 2>&1
-swift run CandidateSceneCheck "$ASSET_WORK" > "$ASSET_WORK/book-preview.log" 2>&1
+swift run --package-path "$ROOT/Experiments/VolumeCat" CandidateSceneCheck "$ASSET_WORK" > "$ASSET_WORK/book-preview.log" 2>&1
 if [[ -d "$ROOT/build/cat-candidate" ]]; then
     ASSET_STAMP="$(date +%Y%m%d%H%M%S)"
     ASSET_BACKUP="$ROOT/build/cat-candidate.previous-$ASSET_STAMP"

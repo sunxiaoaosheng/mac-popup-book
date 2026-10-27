@@ -25,6 +25,10 @@ let package = Package(
             dependencies: ["PopupBookCore", "SceneKitRendering", "PaperCatBehavior"],
             path: "Characters/PaperCat/Rendering"),
         .target(
+            name: "VolumeCatRendering",
+            dependencies: ["PopupBookCore", "SceneKitRendering", "PaperCatBehavior"],
+            path: "Characters/PaperCat/VolumeRendering"),
+        .target(
             name: "ForestCabinScene", dependencies: ["PopupBookCore", "SceneKitRendering"],
             path: "Apps/ForestCabin/Scene", resources: [.process("Resources")]),
         .executableTarget(
@@ -52,6 +56,24 @@ let package = Package(
                 "PaperCatRendering", "ForestCabinScene",
             ],
             path: "Tools/CompanionCheck"),
+        .executableTarget(
+            name: "OffscreenCheck",
+            dependencies: [
+                "PopupBookCore", "SceneKitRendering", "PaperCatBehavior", "PaperCatRendering",
+                "VolumeCatRendering", "ForestCabinScene",
+            ],
+            path: "Tools/OffscreenCheck"),
+        .executableTarget(
+            name: "PlaybackCheck", dependencies: ["SceneKitRendering"], path: "Tools/PlaybackCheck"),
+        .executableTarget(
+            name: "CandidateSceneCheck",
+            dependencies: [
+                "PopupBookCore", "SceneKitRendering", "PaperCatBehavior", "VolumeCatRendering",
+                "ForestCabinScene",
+            ],
+            path: "Tools/CandidateSceneCheck"),
+        .executableTarget(name: "AssetCheck", path: "Tools/AssetCheck"),
+        .executableTarget(name: "RealityAssetCheck", path: "Tools/RealityAssetCheck"),
         .executableTarget(name: "ExportAudio", dependencies: ["PopupBookCore"], path: "Tools/ExportAudio"),
         .testTarget(name: "MacPlatformTests", dependencies: ["MacPlatform"], path: "Tests/MacPlatformTests"),
         .testTarget(name: "CoreTests", dependencies: ["PopupBookCore"], path: "Tests/CoreTests"),
@@ -65,7 +87,7 @@ let package = Package(
             name: "RenderingTests",
             dependencies: [
                 "PopupBookCore", "SceneKitRendering", "PaperCatBehavior", "PaperCatRendering",
-                "ForestCabinScene",
+                "VolumeCatRendering", "ForestCabinScene",
             ], path: "Tests/RenderingTests"),
     ],
     swiftLanguageVersions: [.v5]

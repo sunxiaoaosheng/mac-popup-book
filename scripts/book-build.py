@@ -9,6 +9,18 @@ def command(args, cwd=ROOT):
 def binary_path(package):
     return pathlib.Path(subprocess.check_output(['swift', 'build', '--package-path', str(package), '-c', 'release', '--show-bin-path'], text=True).strip())
 
+def resource_bundle_names(package):
+    description = json.loads(subprocess.check_output(
+        ['swift', 'package', '--package-path', str(package), 'describe', '--type', 'json'], text=True))
+    return {description['name'] + '_' + target['name'] + '.bundle'
+            for target in description['targets'] if target.get('resources')}
+
+def copy_resource_bundles(binary_directory, destination, allowed):
+    # Ignore orphan bundles from old targets left in incremental build caches.
+    for path in binary_directory.glob('*.bundle'):
+        if path.name in allowed:
+            shutil.copytree(path, destination / path.name)
+
 def build(args):
     published = json.loads((ROOT / 'Book/published-pages.json').read_text())
     ids = args.pages.split(',') if args.pages else published['pages']
@@ -41,8 +53,8 @@ def build(args):
         info['CFBundleIdentifier'] += '.background-check'
         info['LSBackgroundOnly'] = True
     (contents / 'Info.plist').write_bytes(plistlib.dumps(info))
-    for path in bin.glob('*.bundle'):
-        shutil.copytree(path, resources / path.name)
+    shared_bundles = resource_bundle_names(ROOT)
+    copy_resource_bundles(bin, resources, shared_bundles)
     shutil.copy2(ROOT / 'Apps/BookHost/Packaging/AppIcon.icns', resources / 'AppIcon.icns')
     for lang in ['en', 'zh-Hans']:
         shutil.copytree(ROOT / f'Apps/BookHost/Packaging/{lang}.lproj', resources / f'{lang}.lproj')
@@ -55,8 +67,7 @@ def build(args):
         shutil.copy2(worker_bin / page['product'], worker / page['product'])
         service_resources = service / 'Contents/Resources'
         service_resources.mkdir()
-        for path in worker_bin.glob('*.bundle'):
-            shutil.copytree(path, service_resources / path.name)
+        copy_resource_bundles(worker_bin, service_resources, shared_bundles | resource_bundle_names(package))
         for path in (package / 'Resources').glob('*'):
             if path.is_dir():
                 shutil.copytree(path, service_resources / path.name)
